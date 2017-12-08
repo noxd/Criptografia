@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Criptografia</title>
+	<link rel="stylesheet" type="text/css" href="./css/style.css">
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<title>Cefetflix</title>
+	<script src="./js/jquery.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="./bootstrap/css/bootstrap.min.css">
+	<script>
+
+		$(function(){
+
+			String.prototype.diacritics = function( ) {
+
+				var s 		  = this.toString();
+					in_chrs   = 'àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ',
+					out_chrs  = 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY', 
+					chars_rgx = new RegExp('[' + in_chrs + ']', 'g'),
+					transl    = {}, i,
+					lookup    = function (m) { return transl[m] || m; };
+
+				for (var i=0; i<in_chrs.length; i++) {
+					transl[ in_chrs[i] ] = out_chrs[i];
+				}
+
+				return s.replace(chars_rgx, lookup);
+			}
+
+			function gerarMatriz( x, y ) {
+
+				var m = [];
+
+				for( var i = 0; i < y; i++ ) {
+					m.push( new Array( x ) );
+				}
+
+				return m;
+			}
+
+			function gerarMatrizPreenchida( x, y ) {
+
+				var matriz = gerarMatriz( x, y );
+				var offset = 0;
+
+				for( var j = 0; j < y; j++ ) {
+
+					offset = 0;
+
+					for ( var i = 0; i < x; i++ ) {
+
+						var letra = 97 + j + i;
+						
+						if( letra < 123 ) {
+							matriz[j][i] = String.fromCharCode( letra );
+						}
+						else {
+							matriz[j][i] = String.fromCharCode( 97 + offset );
+							offset++;
+						}
+					}
+				}
+
+				return matriz;
+			}
+
+			function alfabetoChave( vetor ) {
+
+				var offset = 0;
+
+				for( var i = vetor.length - 1; offset < 26; i++ ) {
+					vetor.push( String.fromCharCode( 97 + offset ) );
+					offset++;
+				}
+
+				$.unique( vetor );
+
+				return vetor;
+			}
+
+			function limparChaveAlfabeto( chave ) {
+
+				chave = limparValor(chave);
+				$.unique( chave );
+
+				return chave;
+			}
+
+			function igualarMensagemChave( mensagem, chave ) {
+
+				var i = 0;
+				var valoresIgualados = [];
+				var chaveIgualada = chave;
+				var mensagemIgualada = mensagem;
+				var letraMorta = ['w','x', 'y' ];
+		
+				while ( mensagemIgualada.length > chaveIgualada.length) {
+					chaveIgualada = chaveIgualada.concat(chave);
+				}
+
+				while ( mensagemIgualada.length < chaveIgualada.length) {
+					
+
+					mensagemIgualada.push(letraMorta[i]);
+					i++;
+					if ( i == letraMorta.length ) {
+						i = 0;
+					}
+
+				}
+
+				valoresIgualados[ 'mensagem' ] = mensagemIgualada;
+				valoresIgualados[ 'chave' ] = chaveIgualada;
+
+				return valoresIgualados;
+			}
+
+			function encontrarPosicaoCriptografar( alfabeto, chave, mensagem, matriz ) {
+
+				var valoresIgualados = igualarMensagemChave( mensagem, chave );
+
+				var paresPosicao = [];
+
+				for( var i = 0; i < valoresIgualados['chave'].length; i++ ) {
+
+					posicaoChave = alfabeto.indexOf(valoresIgualados['chave'][i]);
+					posicaoMensagem = alfabeto.indexOf(valoresIgualados['mensagem'][i]);
+					paresPosicao.push([posicaoChave, posicaoMensagem]);
+
+				}
+
+				return paresPosicao;
+			}
+
+			function encontrarPosicaoDescriptografar( alfabeto, chave, mensagem, matriz ) {
+
+				var valoresIgualados = igualarMensagemChave( mensagem, chave );
+				var posicao = [];
+
+				for( var i = 0; i < valoresIgualados['chave'].length; i++ ) {
+					posLA = alfabeto.indexOf(valoresIgualados['chave'][i]);
+					posLM = matriz[posLA].indexOf(valoresIgualados['mensagem'][i]);
+					posicao.push(posLM);
+				}
+
+				return posicao;
+			}
+
+			function limparValor( valor ){
+
+				valor = valor.replace( / /g, '' )
+                        .toLowerCase()
+                        .diacritics( )
+                        .replace( /\W/g, '' );
+
+				valor = valor.split('');
+
+				return valor.filter(function(str) {
+				    return /\S/.test(str);
+				});
+			}
+
+			function criptografarTexto (matrizPreenchida, posicoes) {
+
+				var mensagem = '';
+
+				for (var i = 0; i < posicoes.length; i++) {
+					mensagem += matrizPreenchida[posicoes[i][0]][posicoes[i][1]];
+				}
+
+				return mensagem;
+			}
+
+			function descriptografarTexto (alfabeto, posicao) {
+
+				var mensagem = '';
+
+				for (var i = 0; i < posicao.length; i++) {
+
+					mensagem += alfabeto[posicao[i]];
+				}
+
+				return mensagem;
+			}
+
+			function criptografar(chave, chave2, textoLimpo) {
+
+				textoLimpo = limparValor(textoLimpo);
+				chave2 = limparValor(chave2);
+				chave = limparChaveAlfabeto( chave );
+
+				var matrizPreenchida = gerarMatrizPreenchida( 26, 26 );
+				var alfabeto = alfabetoChave( chave );
+				var posicoes = encontrarPosicaoCriptografar(alfabeto, chave2, textoLimpo, matrizPreenchida);
+
+				mensagem = criptografarTexto(matrizPreenchida, posicoes);
+
+				return mensagem;
+			}
+
+			function descriptografar(chave, chave2, textoCriptografado) {
+
+				chave2 = limparValor(chave2);
+				chave = limparChaveAlfabeto( chave );
+
+				var matrizPreenchida = gerarMatrizPreenchida( 26, 26 );
+				var alfabeto = alfabetoChave( chave );
+				var posicao = encontrarPosicaoDescriptografar(alfabeto, chave2, textoCriptografado, matrizPreenchida);
+
+				mensagem = descriptografarTexto(alfabeto, posicao);
+
+				return mensagem;
+
+			}
+
+			function textoTemNumero(valor){
+				return valor.match(/\d+/g) != null;
+			}
+
+			$(".criptografar").on("click", function(){
+				
+				var chave = $('#chave1').val();
+				var chave2 = $('#chave2').val();
+				var textoLimpo = $('#texto-limpo').val();
+
+				if( textoTemNumero( chave ) ) {
+					alert('Erro: O campo Chave 1 contém números. Utilize apenas números por extenso');
+					return;
+				}
+
+				if( chave == '' ) {
+					alert('A Chave 1 está vazia');
+					return;
+				}
+
+				if( textoTemNumero( chave2 ) ) {
+					alert('Erro: O campo Chave 2 contém números. Utilize apenas números por extenso');
+					return;
+				}
+
+				if( chave2 == '' ) {
+					alert('A Chave 2 está vazia');
+					return;
+				}
+
+				if( textoTemNumero( textoLimpo ) ) {
+					alert('Erro: O campo Texto Limpo contém números. Utilize apenas números por extenso');
+					return;
+				}
+
+				if( textoLimpo == '' ) {
+					alert('O Texto Limpo está vazio');
+					return;
+				}
+
+				mensagem = criptografar(chave, chave2, textoLimpo);
+
+				$('#texto-criptografado').val(mensagem);
+				$('#texto-limpo').val('');
+			});	
+
+			$(".descriptografar").on("click", function(){
+				
+				var chave = $('#chave1').val();
+				var chave2 = $('#chave2').val();
+				var textoCriptografado = $('#texto-criptografado').val();
+
+				if( textoTemNumero( chave ) ) {
+					alert('Erro: O campo Chave 1 contém números. Utilize apenas números por extenso');
+					return;
+				}
+
+				if( chave == '' ) {
+					alert('A Chave 1 está vazia');
+					return;
+				}
+
+				if( textoTemNumero( chave2 ) ) {
+					alert('Erro: O campo Chave 2 contém números. Utilize apenas números por extenso');
+					return;
+				}
+
+				if( chave2 == '' ) {
+					alert('A Chave 2 está vazia');
+					return;
+				}
+
+				if( textoTemNumero( textoCriptografado ) ) {
+					alert('Erro: O campo Texto Criptografado contém números. Utilize apenas números por extenso');
+					return;
+				}
+
+				if( textoCriptografado == '' ) {
+					alert('O Texto Criptografado está vazio');
+					return;
+				}
+
+				mensagem = descriptografar(chave, chave2, textoCriptografado);
+
+				$('#texto-limpo').val(mensagem);
+				$('#texto-criptografado').val('');
+			});	
+		});
+
+	</script>
+</head>
+<body>
+
+	<div class="container">
+		<div class="row">
+			<div class="col-md-12 text-center">
+				<h2> Criptografia de César com senha - Cifra de Vigenère</h2>
+				<br/>
+				<br/>
+			</div>
+			<div class="col-md-offset-4 col-md-4">
+				<div class="form-group">
+					<label>Texto Limpo</label>
+					<textarea name="str" class="texto-limpo form-control" id="texto-limpo"></textarea>
+				</div>
+			</div>
+			<div class="col-md-offset-4 col-md-4">
+				<div class="form-group">
+					<label>Texto Criptografado</label>
+					<textarea name="str" class="texto-criptografado form-control" id="texto-criptografado"></textarea>
+				</div>
+			</div>
+			<div class="col-md-offset-4 col-md-4">
+				<div class="form-group">
+					<label>Chave 1</label>
+					<textarea name="str" class="chave1 form-control" id="chave1"></textarea>
+				</div>
+			</div>
+			<div class="col-md-offset-4 col-md-4">
+				<div class="form-group">
+					<label>Chave 2</label>
+					<textarea name="str" class="chave2 form-control" id="chave2"></textarea>
+				</div>
+			</div>
+			<div class="col-md-offset-4 col-md-2">
+				<br/>
+				<button class="criptografar btn-primary btn-block">Criptografar</button>
+			</div>
+			<div class="col-md-2">
+				<br/>
+				<button class="descriptografar btn-info btn-block">Descriptografar</button>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
